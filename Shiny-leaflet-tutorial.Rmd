@@ -1,0 +1,250 @@
+---
+title: "Spatial Data On the Web"
+author: "Simon Goring - Dash Consultants"
+date: "March 4, 2016"
+
+runtime: shiny
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+
+---
+
+# An Introduction to Leaflet and Shiny in R:
+
+This tutorial will help you get started using both leaflet and shiny in R to do basic data exploration with geospatial data.
+In this tutorial you will:
+
+1. Learn briefly about leaflet & shiny
+2. Install the leaflet and Shiny packages
+3. Produce a very basic leaflet map and learn some elementary functions
+4. Download a file from GitHub
+5. Build a simply Shiny app with a slider bar and drop down menu
+6. Explore a dataset.
+
+I'm going to write code here using the `magrittr` pipe style.  The RStudio `leaflet` tutorial uses the same styling.  I'm just learning it so I want to practice, but I will provide some examples in standard form so you can follow along. 
+
+# What is Leaflet?
+
+Leaflet is a JavaScript Library for mobile-friendly mapping.  Leaflet is an alternative to OpenLayers, although doesn't present all the functionality, and to the closed-source Google Maps API.
+
+Leaflet is very widely used, in part because of its flexibility and because of the broad coalition of users & developers.  There are a large number of base layers available for mapping, it is modular, it supports interactive mapping, multiple geospatial data formats, and it's fairly easy & intuitive to use.
+
+This workshop will focus on using the [`leaflet`](https://rstudio.github.io/leaflet/) package for R, but wrappers also exist for Python  - [`folium`](https://folium.readthedocs.org/en/latest/), and leaflet is natively developed in JavaScript
+
+Leaflet provides a set of tools for easily visualizing geospatial data, and also for navigating and investigating individual records.  First, a brief introduction to Leaflet.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis', width = 4, height = 4}
+library(leaflet)
+map <- leaflet(width = 400, height = 200) %>% 
+         addTiles() %>% 
+         addMarkers(lng = -123.251,
+                    lat = 49.263, 
+                    popup = "You are here.")
+
+map
+
+```
+
+# Installing `leaflet` and `Shiny`
+
+The R [`leaflet` package](https://rstudio.github.io/leaflet/) has been developed by [Joe Cheng](https://github.com/jcheng5) with RStudio.  The package itself lives on CRAN and GitHub, so getting it is fairly straightforward:
+
+```{r, eval=FALSE}
+
+install.packages("leaflet")
+
+# or #
+
+devtools::install_github("rstudio/leaflet")
+
+```
+
+Since we're going to be going a bit further with our tutorial (at the end), let's also install shiny.
+
+```{r, eval=FALSE}
+
+install.packages("shiny")
+
+# or #
+
+devtools::install_github("rstudio/shiny")
+
+```
+
+Fantastic.  You're doing great!
+
+# A Basic Leaflet Map
+## Some Terminology
+
+Leaflet runs on widgets.  The Widget is the thing you interact with in a web document.  When we think of a fully developed leaflet object in R, like the one above, we are thinking of a container that is filled with things.  These things might include:
+1. Navigation controls
+2. Underlying map tiles (a street map or topographic map)
+3. Popups or markers
+4. Geometric shapes (circles, lines, rectangles)
+
+A `leaflet` widget is built piece by piece.  We start with simply creating the widget, the box for all the other content we want to fill in.  Once the box is made we can add pieces to it.  We might want a box with a fixed street map, or without any underlying base layer.  We might want all of our map points to generate popups, or we might only want to add polygons representing protected areas.  Maybe we want to show networks of relatedness for genes, or degrees of similarity between the flavors served at ice cream parlors.
+
+Regardless, in al cases we need to initialize our widget.  We do that with `leaflet()`:
+
+```{r}
+leaflet(width = 400, height = 200)
+```
+
+So, we start with an empty bin.  If we want to do more with this, or make it more interactive later, it makes sense to assign it to a variable, and then add to it:
+
+```{r}
+map <- leaflet()
+map <- addTiles(map)
+map
+```
+
+So now we've added tiles.  Tiles are the baselayers for most web-mapping applications.  They're literally `png` tiles, at various zoom levels for a grid of latitude and longitude coordinates.  There are an enormous number of publically available tile layers for you to use.  You can check out [Leaflet Providers](https://leaflet-extras.github.io/leaflet-providers/preview/) for a pretty exhaustive list.  For one of our webmapping exercises I used a smaller number of options.  You can play with them by copying & running the code block.  If you change the index of `maptypes` you can see what some different map types look like.
+
+```{r, eval = FALSE}
+
+maptypes <- c("MapQuestOpen.Aerial",
+               "Stamen.TerrainBackground",
+               "Esri.WorldImagery",
+               "OpenStreetMap",
+               "Stamen.Watercolor")
+
+# Change the index to see what the different tile-sets look like:
+# Now we're into the magrittr formatting.  We're using "Provider" tiles here,
+# not the default (OpenStreetMap) Tiles:
+
+map <- leaflet() %>% 
+  addProviderTiles(maptypes[1])
+
+```
+
+It's possible to stack tiles as well, for example, adding `OpenWeatherMap.Clouds` to the map abovewould give us a pretty map with some semblance of weather.  Because we're in Vancouver we want to see the rain, and we want to see it close up.  We could just look out the window, or we could `setView` to a fixed location, so that the widget knows where exactly we want to start (higher numbers for zooms mean more zoomed in):
+
+```{r}
+map <- leaflet() %>% 
+  addProviderTiles("Stamen.Watercolor") %>% 
+  addProviderTiles("OpenWeatherMap.Rain") %>% 
+  setView(lng = -123.251,
+          lat = 49.263,
+          zoom = 6)
+  
+```
+
+Provider tiles ultimately come from unique web providers.  The speed and reliability of a tile set is dependent both on your own platform and on the platform of the provider.
+
+## Getting Some Data
+
+In February 2015 the University of Wisconsin's excellent Cartography Lab held a Cartographic Design Challenge to take paleoecological data, records of fossil pollen, and turn them into map products that could tell a story through cartographic design.  As part of the Scott Farley created a large `csv` file from the [Neotoma Paleoecological Database](http://neotmadb.org).  The data was hosted on the Design Challenge's [GitHub page], but we're just going to take the pollen data:
+
+```{r load_pollen}
+
+# Note, this file is 4MB, so it might take some time to download.  It comes from:
+# https://raw.github.com/scottsfarley93/DesignChallengeData/master/plants_combined/all_pollen_final.csv
+# but I've downloaded it and added it to the `data` folder:
+pollen_data <- read.csv("data/pollen_data.csv", stringsAsFactors = FALSE)
+
+# Everything gets loaded as a character string.
+str(pollen_data)
+
+```
+
+The table is pretty big, there's 1110 unique sites with pollen and 84 pollen taxa. In paleoecological analysis we use the presence and proportion of various pollen types (e.g., *Pinus* or *Abies*) as a proxy for the plant that produces that pollen.  We would assume that a sample containing high proportions of *Pinus* and *Picea* pollen would have high proportions of Pine and Spruce on the landscape, while a site with lots of Poaceae and *Quercus* pollen might represent an open oak savanna.  Paleoecologists are often interested in patterns of change at broad spatial scales, so it would be interesting to see how things have changes in North America over the last 15,000 years.
+
+To do this, let's shrink the dataset down a bit:
+1. For varous reasons it's worth being dubious about dates that are in "Radiocarbon years BP", so let's get rid of them.
+2. Let's also get rid of any taxon that never has a proportion greater than 5%.
+3. There's some columns that are extraneous.  We really only need the SiteName, Latitude, Longitude, Age, Taxon & Pct.
+4. Lastly, let's just look at samples between 15000 and -60 years BP.  (1950 is ^14^C year zero because of atmospheric atomic bomb testing).
+
+
+```{r}
+
+library(dplyr)
+
+# Get all taxa with proportions greater than 5%:
+good_taxa <- pollen_data %>% 
+  group_by(Taxon) %>% 
+  summarise(max = max(Pct)) %>% 
+  filter(max > 5) %>% 
+  select(Taxon) %>% unlist
+
+# Now subset the data and remove extraneous columns:
+pollen_subset <- dplyr::filter(pollen_data, 
+                               !AgeType %in% "Radiocarbon years BP" & Taxon %in% good_taxa) %>% 
+                    select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
+  mutate_each(funs(as.numeric), Latitude, Longitude, Age, Pct) %>% na.omit
+
+plot(Latitude ~ Longitude, data = pollen_subset[!duplicated(pollen_subset$SiteName),])
+
+```
+
+So, plotting the unique points here is helpful.  We can see some patterns, but if we want to look at individual taxa, or individual time slices then we have to kep going back to the plot function.  We can get a better handle on some other aspects of the data if we add these points to the map as markers.  We have `r nrow(pollen_subset)` individual records, one for each pollen taxon at each site at each sampled time period.  This is still a lot.
+
+If we plotted everything at once the computer would be unhappy.  So we have two options.  We could subset the data further using a call like `p_small <- pollen_subset %>% filter(!duplicated(SiteName))` or we could aggregate the *Markers* into spatial clusters.  We're going to do both using the `clusterOptions` for the function `addMarkers`:
+
+```{r}
+# If you add all the markers to the map at once your computer is going to be very unhappy :)
+
+p_small <- pollen_subset %>% filter(!duplicated(SiteName))
+
+map <- leaflet() %>% 
+  addProviderTiles("Stamen.Watercolor") %>% 
+  addMarkers(lat = p_small$Latitude, 
+             lng = p_small$Longitude,
+             clusterOptions = markerClusterOptions())
+map
+```
+
+Okay.  This is as far as we're going to go with the basic plotting.  Let's switch into Shiny for a minute.
+
+## Adding Shiny to the Mix
+
+One of the reasons this is so messy still is that we have unique Markers for each pollen taxon at each site, and at each time interval.  This means that some sites have upwards of 300 markers at the same lat/long coordinates.  That's not really going to show me much.  I need a way to navigate interactively through the taxa and time periods.  That's where Shiny comes in.
+
+### A Basic Shiny Setup:
+
+So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward:
+
+```{r TheShinyExample}
+pollen_subset <- dplyr::filter(pollen_data, Taxon %in% good_taxa) %>% 
+                    select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
+  mutate_each(funs(as.numeric), Latitude, Longitude, Age, Pct) %>% na.omit
+
+
+library(shiny)
+
+shinyApp(
+  ui = fluidPage(
+    sliderInput("time", "Years Before Present:", min = -50, max = 15000, value = 0, step = 500),
+    selectInput("taxon", "Taxon of Interest", choices = sort(unique(pollen_subset$Taxon))),
+    leafletOutput("MapPlot1")
+  ),
+  
+  server = function(input, output) {
+    
+    output$MapPlot1 <- renderLeaflet({
+     leaflet() %>% 
+       addProviderTiles("Stamen.Watercolor") %>% 
+        setView(lng = -100, lat = 50, zoom = 2)
+    })
+    
+    observe({
+      
+      age <- input$time
+      taxon <- input$taxon
+      
+      sites <- pollen_subset %>% 
+        filter(findInterval(pollen_subset$Age, c(age - 250, age + 250)) == 1 &
+                            pollen_subset$Taxon %in% taxon)
+      
+      leafletProxy("MapPlot1") %>% clearMarkers() %>% 
+        addCircleMarkers(lng = sites$Longitude,
+                  lat = sites$Latitude,
+                  opacity = sites$Pct)
+    })
+  }
+)
+
+```
