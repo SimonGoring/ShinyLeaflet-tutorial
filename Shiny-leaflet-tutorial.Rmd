@@ -6,9 +6,11 @@ date: "March 4, 2016"
 runtime: shiny
 output: 
   html_document:
+    theme: journal
     toc: true
     toc_depth: 2
     number_sections: true
+    code_folding: show
 
 ---
 
@@ -32,7 +34,7 @@ Leaflet is a JavaScript Library for mobile-friendly mapping.  Leaflet is an alte
 
 Leaflet is very widely used, in part because of its flexibility and because of the broad coalition of users & developers.  There are a large number of base layers available for mapping, it is modular, it supports interactive mapping, multiple geospatial data formats, and it's fairly easy & intuitive to use.
 
-This workshop will focus on using the [`leaflet`](https://rstudio.github.io/leaflet/) package for R, but wrappers also exist for Python  - [`folium`](https://folium.readthedocs.org/en/latest/), and leaflet is natively developed in JavaScript
+This workshop will focus on using the [`leaflet`](https://rstudio.github.io/leaflet/) package for R, but wrappers also exist for Python  - [`folium`](https://folium.readthedocs.org/en/latest/), and leaflet is natively developed in JavaScript.  Throughout this tutorial I'll use the lowercase `leaflet` to refer to the R package and the uppercase Leaflet for the JavaScript module.
 
 Leaflet provides a set of tools for easily visualizing geospatial data, and also for navigating and investigating individual records.  First, a brief introduction to Leaflet.
 
@@ -48,7 +50,7 @@ map
 
 ```
 
-# Installing `leaflet` and `Shiny`
+## Installing `leaflet` and `Shiny`
 
 The R [`leaflet` package](https://rstudio.github.io/leaflet/) has been developed by [Joe Cheng](https://github.com/jcheng5) with RStudio.  The package itself lives on CRAN and GitHub, so getting it is fairly straightforward:
 
@@ -74,34 +76,40 @@ devtools::install_github("rstudio/shiny")
 
 ```
 
-Fantastic.  You're doing great!
+Fantastic. It was pretty easy to get started.  Now all you need to do is write all the code.  Freaking out?  Don't worry, the next section of this Tutorial will lead you through the next steps.  At the end you'll say to yourself "Self, you're amazing, look at all you accomplished at the end of this tutorial!", you'll look off into the distance, and then get on with your, now bigger, now more fulfilling, life.
 
 # A Basic Leaflet Map
 ## Some Terminology
 
-Leaflet runs on widgets.  The Widget is the thing you interact with in a web document.  When we think of a fully developed leaflet object in R, like the one above, we are thinking of a container that is filled with things.  These things might include:
-1. Navigation controls
+Leaflet runs on widgets.  The Widget is the thing you interact with.  When we think of a fully developed leaflet object in R or any other platform, like the one above, we are thinking of a container that is filled with things.  A widget is a box, and it is a box that can contain:
+
+1. Navigation controls & decorations
 2. Underlying map tiles (a street map or topographic map)
 3. Popups or markers
-4. Geometric shapes (circles, lines, rectangles)
+4. Geometric shapes (circles, lines, rectangles, polygons)
 
-A `leaflet` widget is built piece by piece.  We start with simply creating the widget, the box for all the other content we want to fill in.  Once the box is made we can add pieces to it.  We might want a box with a fixed street map, or without any underlying base layer.  We might want all of our map points to generate popups, or we might only want to add polygons representing protected areas.  Maybe we want to show networks of relatedness for genes, or degrees of similarity between the flavors served at ice cream parlors.
+A `leaflet` widget is built piece by piece.  We start by creating the widget, the box for all the other content we want to fill in.  Once the box is made we can add pieces to it.  We might want a box with a fixed street map, or without any underlying base layer.  We might want all of our map points to generate popups, or we might only want to add polygons representing protected areas.  Maybe we want to show networks of relatedness for genes, or degrees of similarity between the flavors served at ice cream parlors.
 
-Regardless, in al cases we need to initialize our widget.  We do that with `leaflet()`:
+Regardless, in all cases we need to initialize our widget.  We do that with `leaflet()`.  `leaflet()` accepts a number of parameters, `width`, `height` and `padding` are parameters you can use to change the appearances of your leaflet object (all in pixels).  You can also pass in data directly to the leaflet map using the `data` parameter.  In practice I tend not to do this, prefering to pass in data directly using the set of `add*()` functions.
 
 ```{r}
 leaflet(width = 400, height = 200)
 ```
 
-So, we start with an empty bin.  If we want to do more with this, or make it more interactive later, it makes sense to assign it to a variable, and then add to it:
+## Making a Map
 
-```{r}
-map <- leaflet()
+So, we start with an empty widget.  If we want to do more with our widget, or make it more interactive later, it makes sense to assign it to a variable, and then add to it.  We need to explicitly call the variable to make the map appear.  We can add a baselayer with the `addTiles()` function, we'll see a bit more about it later, and we can make sure that the initial view is reasonable.  Using `setView` we can center the map using the `lat`/`lng` parameters and the `zoom`.  There are a set of `options` that you could add, defined in the `Leaflet` [documentation](http://leafletjs.com/reference.html#map-zoompanoptions) (as opposed to the `leaflet` documentation)
+
+```{r mapWithTiles}
+map <- leaflet(width = 400, height = 400)
 map <- addTiles(map)
-map
+map <- setView(map, lng = -123.251,
+               lat = 49.263,
+               zoom = 6)
+
 ```
 
-So now we've added tiles.  Tiles are the baselayers for most web-mapping applications.  They're literally `png` tiles, at various zoom levels for a grid of latitude and longitude coordinates.  There are an enormous number of publically available tile layers for you to use.  You can check out [Leaflet Providers](https://leaflet-extras.github.io/leaflet-providers/preview/) for a pretty exhaustive list.  For one of our webmapping exercises I used a smaller number of options.  You can play with them by copying & running the code block.  If you change the index of `maptypes` you can see what some different map types look like.
+Tiles are the baselayers for most web-mapping applications.  They're literally `png` tiles, at various zoom levels for a grid of latitude and longitude coordinates.  There are an enormous number of publically available tile layers for you to use.  You can check out [Leaflet Providers](https://leaflet-extras.github.io/leaflet-providers/preview/) for a pretty exhaustive list.  For one of our webmapping exercises I used a smaller number of options.  You can play with them by copying & running the code block.  If you change the index of `maptypes` you can see what some different map types look like.
 
 ```{r, eval = FALSE}
 
@@ -134,6 +142,32 @@ map <- leaflet() %>%
 
 Provider tiles ultimately come from unique web providers.  The speed and reliability of a tile set is dependent both on your own platform and on the platform of the provider.
 
+## Adding Markers
+
+Once a map is made we often want to add some sort of marker or object on top of the map.  We could add someting like a marker, or a line.  These functions all follow the `add*()` format, including `addMarkers`, `addPopups`, `addCircleMarkers`, `addCircles` and others.  
+
+Here we're going to add a Marker and a CircleMarker.  Markers are pretty useful, the "points" of the `leaflet` universe.  We can modify the Marker further using its `options` parameter.  The `options` accept a set of different `markerOptions` that allow you to drag, click, and hover over the markers:
+
+```{r eval = FALSE}
+map <- leaflet() %>% 
+  addProviderTiles("Esri.WorldImagery") %>% 
+  addMarkers(lng = -123.251,
+                    lat = 49.263, 
+                    popup = "You are here.",
+             options = markerOptions(draggable = TRUE, riseOnHover = TRUE)) %>% 
+  addCircleMarkers(lng = -123.261,
+                    lat = 49.273, 
+                    popup = "You aren't here.",
+                   fillColor= "red", opacity = 1,
+             options = markerOptions(draggable = FALSE, title = "Whoops")) %>% 
+  setView(lng = -123.251,
+          lat = 49.263,
+          zoom = 13)
+
+```
+
+Most of these options are more fully described in the `markerOptions` help, or the `markers` [documentation](http://leafletjs.com/reference.html#marker) for Leaflet.  The pointy marker above can be dragged around willy-nilly but the circle can't.  Try to switch the settings around here to drag the circle marker and leave the pointy marker fixed.
+
 ## Getting Some Data
 
 In February 2015 the University of Wisconsin's excellent Cartography Lab held a Cartographic Design Challenge to take paleoecological data, records of fossil pollen, and turn them into map products that could tell a story through cartographic design.  As part of the Scott Farley created a large `csv` file from the [Neotoma Paleoecological Database](http://neotmadb.org).  The data was hosted on the Design Challenge's [GitHub page], but we're just going to take the pollen data:
@@ -153,13 +187,14 @@ str(pollen_data)
 The table is pretty big, there's 1110 unique sites with pollen and 84 pollen taxa. In paleoecological analysis we use the presence and proportion of various pollen types (e.g., *Pinus* or *Abies*) as a proxy for the plant that produces that pollen.  We would assume that a sample containing high proportions of *Pinus* and *Picea* pollen would have high proportions of Pine and Spruce on the landscape, while a site with lots of Poaceae and *Quercus* pollen might represent an open oak savanna.  Paleoecologists are often interested in patterns of change at broad spatial scales, so it would be interesting to see how things have changes in North America over the last 15,000 years.
 
 To do this, let's shrink the dataset down a bit:
+
 1. For varous reasons it's worth being dubious about dates that are in "Radiocarbon years BP", so let's get rid of them.
 2. Let's also get rid of any taxon that never has a proportion greater than 5%.
 3. There's some columns that are extraneous.  We really only need the SiteName, Latitude, Longitude, Age, Taxon & Pct.
 4. Lastly, let's just look at samples between 15000 and -60 years BP.  (1950 is ^14^C year zero because of atmospheric atomic bomb testing).
 
 
-```{r}
+```{r, warning = FALSE}
 
 library(dplyr)
 
@@ -207,7 +242,7 @@ One of the reasons this is so messy still is that we have unique Markers for eac
 
 So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward:
 
-```{r TheShinyExample}
+```{r TheShinyExample, warning = FALSE}
 pollen_subset <- dplyr::filter(pollen_data, Taxon %in% good_taxa) %>% 
                     select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
   mutate_each(funs(as.numeric), Latitude, Longitude, Age, Pct) %>% na.omit
@@ -244,7 +279,10 @@ shinyApp(
                   lat = sites$Latitude,
                   opacity = sites$Pct)
     })
-  }
+  },
+  options = list(height = 1200)
 )
 
 ```
+
+Now you can explore your data easily.
