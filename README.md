@@ -18,6 +18,12 @@ In this tutorial you will:
 
 I've tried to structure the main document to be a 'chatty' tutorial, so you can walk through things on your own, but ultimately we only get so far in developing the tutorial because the workshop session is only one hour long.
 
+Using RStudio you can fork (or clone) the repository locally and then "run" it using rmarkdown.  If you do that you will have an html document wth embedded Shiny'Leaflet applets.  It's pretty cool.  It does run from the web, but my current hosting situation isn't great.
+
+At the end, you'll make a nice little map like the one below, of data from the [Neotoma Paleoecological Database](http://neotomadb.org), but the lesson is broadly applicable.  I just know this data best.
+
+![leaflet_map](images/finalMap.png)
+
 ## Contribution
 
 You are welcome to fork & contribute to this repository, but contributors are expected to follow the [Code of Conduct](http://github.com/SimonGoring/ShinyLeaflet-tutorial/code_of_conduct.md) posted in this repository.
