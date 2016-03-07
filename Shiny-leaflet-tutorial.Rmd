@@ -256,6 +256,8 @@ shinyApp(ui = fluidPage(titlePanel("So Simple"),
 
 ```
 
+If we want shiny to accept inputs we need to define the type of inputs, in the example above we used a `sliderInput`, but you can have a `checkboxInput` (or `checkboxGroupInput`), `dateInput`, `dateRangeInput`, `fileInput` (for file uploads!), and all sorts of other inputs.  You can use HTML formatting, add tool tips, go as crazy as you want.  There's a useful package called `shinydashboard` that I've found helpful for making the apps look a bit prettier, and you can always embed a shiny app in a different webpage using an HTML `iframe`.
+
 ```{r TheShinyExample, warning = FALSE}
 pollen_subset <- dplyr::filter(pollen_data, Taxon %in% good_taxa) %>% 
                     select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
@@ -294,9 +296,9 @@ shinyApp(
                   opacity = sites$Pct)
     })
   },
-  options = list(height = 1200)
+  options = list(height = 600)
 )
 
 ```
 
-Now you can explore your data easily.
+Now you can explore your data easily.  Obviously we can make some changes to the code.  In general I start splitting my `server` and `ui` components up into two pieces to make them more manegable.  
