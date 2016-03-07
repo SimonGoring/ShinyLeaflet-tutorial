@@ -240,7 +240,7 @@ One of the reasons this is so messy still is that we have unique Markers for eac
 
 ### A Basic Shiny Setup:
 
-So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward.  To build a Shiny app we need a user interface usually as a file called `ui.R` and code that is going to run our analysis on the server, called `server.R` usually.  If we're being very concise we can wrap everything into a function called `shinyApp`:
+So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward.  To build a Shiny app we need a user interface usually as a file called `ui.R` and code that is going to run our analysis on the server, called `server.R` usually.  If we're being very concise we can wrap everything into a function called `shinyApp`.
 
 ```{r mostBasicShiny}
 # install.packages('shiny')
@@ -256,20 +256,43 @@ shinyApp(ui = fluidPage(titlePanel("So Simple"),
 
 ```
 
-If we want shiny to accept inputs we need to define the type of inputs, in the example above we used a `sliderInput`, but you can have a `checkboxInput` (or `checkboxGroupInput`), `dateInput`, `dateRangeInput`, `fileInput` (for file uploads!), and all sorts of other inputs.  You can use HTML formatting, add tool tips, go as crazy as you want.  There's a useful package called `shinydashboard` that I've found helpful for making the apps look a bit prettier, and you can always embed a shiny app in a different webpage using an HTML `iframe`.
+If we want shiny to accept inputs we need to define the type of inputs as part of the `ui`. In the example above we used a `sliderInput`, but you can have a `checkboxInput` (or `checkboxGroupInput`), `dateInput`, `dateRangeInput`, `fileInput` (for file uploads!), and all sorts of other inputs.  You can use HTML formatting, add tool tips, go as crazy as you want. 
+
+If you want to add tool tips to your inputs (which is a nice thing to do for users), you could wrap each of your `*Input` functions with:
+
+```
+tags$div(title = "This is the tool tip.",
+               selectInput( . . . ))
+```
+
+There's also a useful package called `shinydashboard` that I've found helpful for making the apps look a bit prettier, and you can always embed a shiny app in a different webpage using an HTML `iframe`.
+
+The code sample below can be divided into five sections:  
+
+1. First, we put the pollen data into a global variable at the header.
+2. We wrap the whole Shiny App into a single function (this is for convenience and to simplify the example)
+3. The UI defines a `fluidPage` as above, this time with a slider for time and a `selectInput` with the `unique` pollen taxa (using scientific genera for the most part).  The last component of the UI is the `leafletOutput`, which will look for an `output`, which is a leaflet widget named `"MapPlot1"` to render.
+4. The `server` section starts by rendering the leaflet widget, with the Stamen Watercolor tile set and setting it to `output$MapPlot1`.  You can use whatever tileset you want here.  The `observe` function is a `reactive`, but it's a special case (you can read more about `reactive` & `observe` on the [RStudio blog](http://shiny.rstudio.com/articles/reactivity-overview.html)) that returns a rendered objct, not a list of values.  In this case, the rendered object is the leaflet widget `"MapPlot1"`, updated by first clearing any makers added using `addMarkers`, and then putting in new markers based on a subset of pollen data from a 500 year time band around the time defined in the `sliderInput` `"time"` and the `selectInput` choice `"taxon"`.
+5. Finally, because the whole thing was rendering in a funny way I set the `height` `option` to 600 pixels so that everything would look nice.
+
 
 ```{r TheShinyExample, warning = FALSE}
 pollen_subset <- dplyr::filter(pollen_data, Taxon %in% good_taxa) %>% 
                     select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
   mutate_each(funs(as.numeric), Latitude, Longitude, Age, Pct) %>% na.omit
 
-
+library(leaflet)
 library(shiny)
 
 shinyApp(
   ui = fluidPage(
-    sliderInput("time", "Years Before Present:", min = -50, max = 15000, value = 0, step = 500),
-    selectInput("taxon", "Taxon of Interest", choices = sort(unique(pollen_subset$Taxon))),
+    sliderInput(inputId = "time", 
+                label = "Years Before Present:", 
+                min = -50, max = 15000, value = 0, step = 500),
+    tags$div(title = "This input has a tool tip",
+             selectInput(inputId = "taxon", 
+                label = "Taxon of Interest", 
+                choices = sort(unique(pollen_subset$Taxon)))),
     leafletOutput("MapPlot1")
   ),
   
@@ -301,4 +324,8 @@ shinyApp(
 
 ```
 
-Now you can explore your data easily.  Obviously we can make some changes to the code.  In general I start splitting my `server` and `ui` components up into two pieces to make them more manegable.  
+Now you I explore my data easily.  I can slide through time and see if there are sites that show up where they shouldn't, or sites I know are there that don't show up at all.  I could make this even more interactive if I used `addPopups`, since the API for the Neotoma Paleoecological Database allows us to directly open the Neotoma Data Explorer from a URI, for example [http://api.neotomadb.org/v1/data/publications?datasetid=1001]().  So I could generate HTML code within the popup that would bring me right to the explorer to look at the data more closely, or link the the publication DOI, or anything else I want to.  
+
+As a quick pitch (for paleo folks) EarthCube's Cyber4Paleo Research Coordination Network is hosting a hackathon for the Neotoma Paleoecological Database and the Paleobiology Database in Boulder, CO.  If you're interested it's worth checking out [this link](http://earthcube.org/content/apply-attend-c4p-paleodata-hackathon-june-2016).
+
+Obviously we can make some changes to the code.  In general I start splitting my `server` and `ui` components up into two pieces to make them more manegable.  You can customize your display more using `fluidRow`s and the `sidebarLayout`, but in some senses, data exploration may not need all the bells and whistles, as long as you can interactively manipulate the variable elements you're interested in seeing.
