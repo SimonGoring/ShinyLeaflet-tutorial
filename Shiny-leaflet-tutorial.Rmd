@@ -184,6 +184,8 @@ str(pollen_data)
 
 ```
 
+### Very Basic Plotting
+
 The table is pretty big, there's 1110 unique sites with pollen and 84 pollen taxa. In paleoecological analysis we use the presence and proportion of various pollen types (e.g., *Pinus* or *Abies*) as a proxy for the plant that produces that pollen.  We would assume that a sample containing high proportions of *Pinus* and *Picea* pollen would have high proportions of Pine and Spruce on the landscape, while a site with lots of Poaceae and *Quercus* pollen might represent an open oak savanna.  Paleoecologists are often interested in patterns of change at broad spatial scales, so it would be interesting to see how things have changes in North America over the last 15,000 years.
 
 To do this, let's shrink the dataset down a bit:
@@ -192,7 +194,6 @@ To do this, let's shrink the dataset down a bit:
 2. Let's also get rid of any taxon that never has a proportion greater than 5%.
 3. There's some columns that are extraneous.  We really only need the SiteName, Latitude, Longitude, Age, Taxon & Pct.
 4. Lastly, let's just look at samples between 15000 and -60 years BP.  (1950 is ^14^C year zero because of atmospheric atomic bomb testing).
-
 
 ```{r, warning = FALSE}
 
@@ -211,34 +212,42 @@ pollen_subset <- dplyr::filter(pollen_data,
                     select(SiteName, Latitude, Longitude, Age, Taxon, Pct) %>% 
   mutate_each(funs(as.numeric), Latitude, Longitude, Age, Pct) %>% na.omit
 
-plot(Latitude ~ Longitude, data = pollen_subset[!duplicated(pollen_subset$SiteName),])
+plot(Latitude ~ Longitude, 
+     data = pollen_subset[!duplicated(pollen_subset$SiteName),])
 
 ```
 
-So, plotting the unique points here is helpful.  We can see some patterns, but if we want to look at individual taxa, or individual time slices then we have to kep going back to the plot function.  We can get a better handle on some other aspects of the data if we add these points to the map as markers.  We have `r nrow(pollen_subset)` individual records, one for each pollen taxon at each site at each sampled time period.  This is still a lot.
+So, plotting the unique points here is helpful.  We can see some patterns, at the very least, we know where points are and where they aren't.  If we want to look at individual taxa, or individual time slices then we have to keep going back to the `plot` function.  We can get a better handle on some other aspects of the data if we add these points to the map as markers.  We have `r nrow(pollen_subset)` individual records, one for each pollen taxon at each site at each sampled time period.  This is still a lot.
+
+### Plotting Data With Leaflet
 
 If we plotted everything at once the computer would be unhappy.  So we have two options.  We could subset the data further using a call like `p_small <- pollen_subset %>% filter(!duplicated(SiteName))` or we could aggregate the *Markers* into spatial clusters.  We're going to do both using the `clusterOptions` for the function `addMarkers`:
 
 ```{r}
 # If you add all the markers to the map at once your computer is going to be very unhappy :)
+# This just adds each unique point to the dataset.
 
 p_small <- pollen_subset %>% filter(!duplicated(SiteName))
+
+# We're adding the popup here so I can click & see what sites I'm looking at.
 
 map <- leaflet() %>% 
   addProviderTiles("Stamen.Watercolor") %>% 
   addMarkers(lat = p_small$Latitude, 
              lng = p_small$Longitude,
-             clusterOptions = markerClusterOptions())
+             clusterOptions = markerClusterOptions(),
+             popup = as.character(p_small$SiteName))
+
 map
 ```
 
-Okay.  This is as far as we're going to go with the basic plotting.  Let's switch into Shiny for a minute.
+Okay.  This is as far as we're going to go with the basic plotting.  Let's switch into Shiny to see how we can make this more interactive.
 
 ## Adding Shiny to the Mix
 
 One of the reasons this is so messy still is that we have unique Markers for each pollen taxon at each site, and at each time interval.  This means that some sites have upwards of 300 markers at the same lat/long coordinates.  That's not really going to show me much.  I need a way to navigate interactively through the taxa and time periods.  That's where Shiny comes in.
 
-### A Basic Shiny Setup:
+### A Basic Shiny Setup
 
 So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward.  To build a Shiny app we need a user interface usually as a file called `ui.R` and code that is going to run our analysis on the server, called `server.R` usually.  If we're being very concise we can wrap everything into a function called `shinyApp`.
 
@@ -266,6 +275,8 @@ tags$div(title = "This is the tool tip.",
 ```
 
 There's also a useful package called `shinydashboard` that I've found helpful for making the apps look a bit prettier, and you can always embed a shiny app in a different webpage using an HTML `iframe`.
+
+### A Full Shiny/Leaflet Example
 
 The code sample below can be divided into five sections:  
 
