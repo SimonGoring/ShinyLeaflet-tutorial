@@ -240,7 +240,21 @@ One of the reasons this is so messy still is that we have unique Markers for eac
 
 ### A Basic Shiny Setup:
 
-So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward:
+So, if we want to interactively switch between taxa or time periods, we need to add some controls.  To do this we can move over to a Shiny App.  At a bare bones level the structure is really straightforward.  To build a Shiny app we need a user interface usually as a file called `ui.R` and code that is going to run our analysis on the server, called `server.R` usually.  If we're being very concise we can wrap everything into a function called `shinyApp`:
+
+```{r mostBasicShiny}
+# install.packages('shiny')
+# library(shiny)
+
+shinyApp(ui = fluidPage(titlePanel("So Simple"),
+                        sliderInput("slider", "Turn It Up", min = 0, max = 11, value = 5),
+                        mainPanel(textOutput("MainPanel"))),
+         server = function(input, output){
+           output$MainPanel = renderText(input$slider)
+         }
+           )
+
+```
 
 ```{r TheShinyExample, warning = FALSE}
 pollen_subset <- dplyr::filter(pollen_data, Taxon %in% good_taxa) %>% 
